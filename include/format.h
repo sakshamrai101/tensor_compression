@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <vector>
 
+
 // TCF1 — on-wire / in-memory compressed frame (architecture.md §4)
 // Fixed 64-byte header + blocked payload. Little-endian.
 
@@ -32,9 +33,30 @@ constexpr std::size_t TCF1_HEADER_BYTES = 64;
 // HINT: Sum the sizes in the §4.1 table; shape_packed is uint32_t[4] for ndims ≤ 4.
 // READ: architecture.md §4.1 (Header), §4.2 (Payload overview), plan.md D13
 // =============================================================================
+
+// contents for compressed file ono disk
+struct Tcf1Header {
+    uint32_t magic;
+    uint16_t version;
+    uint16_t flags;
+    uint8_t dtype;
+    uint8_t ndims;
+    uint16_t reserved0;
+    uint32_t block_size;
+    uint32_t block_count;
+    uint32_t reserved1;
+    uint64_t uncompressed_size;
+    uint64_t payload_size;
+
+    // 4 slots, each uint32_t (4 bytes) -> 64 bytes, which is what the header has left at the end.
+    uint32_t shape_packed[4];
+
+};
+
 struct Tcf1Header {
     // TODO: replace this placeholder so sizeof(Tcf1Header) == 64
     uint8_t bytes[TCF1_HEADER_BYTES]{};
+
 };
 
 // Once you fill real fields, change the placeholder and keep this assert.
