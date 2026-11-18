@@ -1,0 +1,8 @@
+build*/
+build-*/
+.venv/
+data/
+*.tcf
+.DS_Store
+__pycache__/
+*.pyc

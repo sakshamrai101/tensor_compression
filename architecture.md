@@ -131,41 +131,39 @@ Define in `include/format.h`. Little-endian. Versioned.
 
 ### 4.1 Header (fixed, 64 bytes)
 
+Locked layout (little-endian, field-by-field serialization — never `memcpy` the struct):
+
 | Offset | Size | Field | Notes |
 |--------|------|-------|-------|
-| 0 | 4 | magic | `'T' 'C' 'F' '1'` |
+| 0 | 4 | magic | `'T' 'C' 'F' '1'` (`0x31464354` as u32 LE) |
 | 4 | 2 | version | `1` |
-| 6 | 2 | flags | bit0: payload uses shuffle; bit1: xor; bit2: rle; etc. |
+| 6 | 2 | flags | bit0 shuffle; bit1 xor; bit2 rle |
 | 8 | 1 | dtype | `DataType` |
-| 9 | 1 | ndims | 1–8 |
-| 10 | 2 | reserved0 | 0 |
-| 12 | 4 | block_size | codec block size in bytes (e.g. 65536) |
+| 9 | 1 | ndims | 0–6 |
+| 10 | 2 | reserved0 | must be 0 |
+| 12 | 4 | block_size | default 65536 |
 | 16 | 4 | block_count | |
-| 20 | 4 | reserved1 | 0 |
+| 20 | 4 | reserved1 | must be 0 |
 | 24 | 8 | uncompressed_size | |
-| 32 | 8 | payload_size | bytes following header |
-| 40 | 24 | shape[6] padded | first `ndims` entries used; rest 0; 64-bit each would exceed — **use 4×uint32 for first 4 dims + ndims check**, or store shape after header |
+| 32 | 8 | payload_size | bytes after the header |
+| 40 | 24 | shape | `uint32_t[6]`; first `ndims` used, rest 0 |
 
-**Simplification for v1 (recommended):**
-
-- Fixed 64-byte prefix as above with `shape_packed[4]` as `uint32_t[4]` and `ndims ≤ 4` for v1  
-- If more dims needed later, bump version  
-
-CRC optional in v1 (skip for speed; can add flags bit later).
+`static_assert(sizeof(Tcf1Header) == 64)` plus `offsetof` checks live in `include/format.h`. CRC is not used in v1.
 
 ### 4.2 Payload
 
-Sequence of **blocks**:
+Sequence of **block records**:
 
 ```
 for each block:
-    u32 raw_block_len
-    u32 comp_block_len
-    u8  comp_bytes[comp_block_len]
+    u32 raw_len
+    u32 comp_len
+    u8  mode          # 0 = encoded (stages in flags), 1 = stored raw
+    u8  reserved[3]   # must be 0
+    u8  bytes[comp_len]
 ```
 
-Last block may be shorter than `block_size`.  
-Each block independently: shuffle → xor → rle on that block’s bytes (enables parallel decode later).
+Last block may be shorter than `block_size`. Each block independently runs shuffle → xor → rle (when flags say so). If the encoded form is not smaller than `raw_len`, the compressor stores the block raw (`mode = 1`) so a frame never expands by more than header + record overhead.
 
 ### 4.3 Flags and ablations
 
@@ -223,28 +221,22 @@ s[i] = out[i] XOR s[i-1]
 
 Widening: process with `uint64_t` or SIMD chunks carefully (dependency chain on decode — document; may use blocked XOR with restart markers later if needed). **v1:** simple sequential XOR-delta; SIMD can still help encode and other stages.
 
-### 5.3 RLE variant (v1: “Zero-RLE + literal”)
+### 5.3 RLE variant (v1: zero-run + literal)
 
-Goal: exploit zero-dense streams after XOR on correlated data.
+Goal: exploit zero-dense streams after XOR without doubling incompressible mantissa bytes.
 
-Simple format (document precisely in code comments too):
-
-```
-stream of tokens:
-  - 0x00 + u8 count     => emit (count+1) zero bytes   (count 0..255 → 1..256 zeros)
-  - 0x01 + u8 n + n bytes => emit n literal bytes       (n 1..255)
-  - 0x02 + u16 countLE  => emit (count) zero bytes      (optional extended zero run)
-```
-
-Or even simpler **run-length on bytes** (classic):
+**Locked token format:**
 
 ```
-[value:u8][run_len:u8] repeated; run_len >= 1
+0x00, k              => emit (k+1) zero bytes     (1..256 zeros)
+0x01, k, <k+1 bytes> => emit (k+1) literal bytes  (1..256 literals)
 ```
 
-**Decision for v1 (locked):** use classic `[value][run_len]` with `run_len in 1..255`, repeated for longer runs. Easy to implement, easy to test. If ratio is weak on zeros, upgrade to zero-specialized RLE in Phase 2 without changing the public tensor API (bump format version).
+Any other tag is invalid. The encoder only emits a zero token for runs of length ≥ 4 (shorter zeros stay inside the surrounding literal). Worst-case expansion is under ~0.8%.
 
-Decode must reject truncated streams gracefully (tests for malformed input optional but good).
+Classic `[value][run_len]` is **not** used in the pipeline (it doubles random bytes). It may appear only as a bench-side ablation to document why it failed.
+
+Decode must reject truncated streams, unknown tokens, and length mismatches (`std::runtime_error`).
 
 ### 5.4 Encode / decode orchestration
 
@@ -399,12 +391,12 @@ This is a **trusted local codec** for a portfolio project. Do not claim hardened
 
 ## 13. Mapping from old README claims
 
-| README claim | Architectural treatment |
-|--------------|-------------------------|
-| 1.78× ratio, 4.2 GB/s, −18.4% L3 | Hypotheses only until measured; L3 via `perf` is optional stretch |
-| AVX2 vectorized | Phase 2, if host supports |
-| No malloc on decompress | Enforce via `decompress_to` + scratch reuse |
-| Layer-aware | Block/paging story; not ML-layer semantics magic |
+| Old README claim | Treatment now |
+|------------------|---------------|
+| 1.78× ratio, 4.2 GB/s, −18.4% L3 | Removed. Numbers come only from `tc_bench` CSVs under `results/` |
+| AVX2 required | Scalar always; NEON on Apple Silicon; AVX2 optional on x86 |
+| No malloc on decompress | Enforced via `decompress_to` + `tc_alloc_test` |
+| Layer-aware | `LayerPager` residency demo; not ML-layer semantics magic |
 
 ---
 

@@ -1,0 +1,14 @@
+model=gpt2 tensors=12
+name                                         nbytes    ratio upcast
+wte.weight                                154389504   0.9998  False
+wpe.weight                                  3145728   0.9998  False
+h.0.ln_1.weight                                3072   1.1058  False
+h.0.ln_1.bias                                  3072   0.9759  False
+h.0.attn.c_attn.weight                      7077888   0.9998  False
+h.0.attn.c_attn.bias                           9216   0.9918  False
+h.0.attn.c_proj.weight                      2359296   0.9998  False
+h.0.attn.c_proj.bias                           3072   0.9759  False
+h.0.ln_2.weight                                3072   0.9910  False
+h.0.ln_2.bias                                  3072   0.9759  False
+h.0.mlp.c_fc.weight                         9437184   1.0001  False
+h.0.mlp.c_fc.bias                             12288   0.9939  False

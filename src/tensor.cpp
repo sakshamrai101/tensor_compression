@@ -1,30 +1,61 @@
 #include "tensor.h"
 
+#include <limits>
 #include <stdexcept>
+#include <string>
+
+namespace tc {
 
 size_t element_size(DataType dtype) {
-    // =============================================================================
-    // HUMAN-TODO: element_size
-    // WHY: Every tensor size check is shape × element_size(dtype). Wrong sizes
-    //      break the invariant in architecture.md §3.2 and corrupt compress/decompress.
-    // DO: Switch on dtype; return 4 (FP32), 2 (FP16), 1 (INT8).
-    //     Throw std::invalid_argument (or similar) for an unknown value.
-    // HINT: `switch (dtype) { case DataType::FP32: return 4; ... }`
-    // READ: architecture.md §3.1 (DataType), learning.md §4 "Before Phase 0"
-    // =============================================================================
-    (void)dtype;
-    throw std::logic_error("HUMAN-TODO: element_size not implemented");
+    switch (dtype) {
+        case DataType::FP32: return 4;
+        case DataType::FP16: return 2;
+        case DataType::INT8: return 1;
+    }
+    throw std::invalid_argument("element_size: unknown DataType");
 }
 
 size_t numel(const std::vector<size_t>& shape) {
-    // =============================================================================
-    // HUMAN-TODO: numel
-    // WHY: "Row-major tightly packed" means total elements are the product of dims.
-    //      You need this to verify data.size() == numel(shape) * element_size(dtype).
-    // DO: Multiply all entries in shape. If shape.empty(), return 0.
-    // HINT: Start with size_t n = 1; loop and multiply (watch empty → 0, not 1).
-    // READ: architecture.md §3.2 (RawTensor invariant), learning.md §4 "Before Phase 0"
-    // =============================================================================
-    (void)shape;
-    throw std::logic_error("HUMAN-TODO: numel not implemented");
+    if (shape.empty()) {
+        return 0;
+    }
+    size_t n = 1;
+    for (size_t dim : shape) {
+        if (dim != 0 && n > std::numeric_limits<size_t>::max() / dim) {
+            throw std::overflow_error("numel: shape product overflows size_t");
+        }
+        n *= dim;
+    }
+    return n;
 }
+
+void validate(const RawTensor& tensor) {
+    const size_t elems = numel(tensor.shape);
+    const size_t elem = element_size(tensor.dtype);
+    if (elems > std::numeric_limits<size_t>::max() / elem) {
+        throw std::overflow_error("validate: tensor byte size overflows size_t");
+    }
+    if (tensor.data.size() != elems * elem) {
+        throw std::invalid_argument(
+            "validate: data.size()=" + std::to_string(tensor.data.size()) +
+            " but shape*element_size=" + std::to_string(elems * elem));
+    }
+}
+
+const char* dtype_name(DataType dtype) {
+    switch (dtype) {
+        case DataType::FP32: return "fp32";
+        case DataType::FP16: return "fp16";
+        case DataType::INT8: return "int8";
+    }
+    return "unknown";
+}
+
+DataType parse_dtype(std::string_view name) {
+    if (name == "fp32") return DataType::FP32;
+    if (name == "fp16") return DataType::FP16;
+    if (name == "int8") return DataType::INT8;
+    throw std::invalid_argument("unknown dtype '" + std::string(name) + "' (expected fp32|fp16|int8)");
+}
+
+}  // namespace tc

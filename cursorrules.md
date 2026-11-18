@@ -38,7 +38,7 @@ Complement quantization; do not market this as replacing it.
 8. **Scalar oracle first.** Any SIMD path must match scalar output exactly (test it).  
 9. **Hot-path decode:** avoid allocations inside per-block decompress after buffers are warmed; provide `decompress_to`.  
 10. **C++20 + CMake** only for the core library (no Python rewrite of the codec). Python helper scripts for data export are OK under `tools/` if needed.  
-11. **Collab mode default:** write boilerplate + leave `HUMAN-TODO` regions for impactful logic (see `learning.md`). Do not silently fill those TODOs with full algorithms unless the human asks. After scaffolding, list every `HUMAN-TODO` (file + title).
+11. **Collab mode:** default in `learning.md` is scaffold + `HUMAN-TODO` for impactful logic. **Suspended for the Phase 0–3 full-implementation Builder chunk** at the human’s request (implement stages fully; keep code teachable). Re-enable collab mode when the human asks to learn by filling stubs again.
 
 ---
 
@@ -145,14 +145,13 @@ Use checkboxes in `plan.md`. A phase is not done when “code exists”; it is d
 ## 10. Quick command cheatsheet (target)
 
 ```bash
+export PATH="$PWD/.venv/bin:$PATH"   # if cmake lives in the project venv
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
-./build/tc_tests
-./build/tc_bench --synthetic correlated
+ctest --test-dir build --output-on-failure
+./build/tc_bench --quick --csv results/local.csv
 ./build/tc info -i example.tcf
 ```
-
-Adjust binary names if CMake target names differ; update this section when targets land.
 
 ---
 

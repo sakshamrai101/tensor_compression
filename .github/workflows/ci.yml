@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build liblz4-dev libzstd-dev zlib1g-dev
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja lz4 zstd
+      - name: Configure Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Sanitize (UBSan / ASan)
+        run: |
+          cmake -B build-san -DCMAKE_BUILD_TYPE=Debug -DTC_SANITIZE=ON -DTC_BUILD_BENCH=OFF -G Ninja
+          cmake --build build-san -j
+          ctest --test-dir build-san --output-on-failure
+      - name: Quick bench smoke
+        run: ./build/tc_bench --quick --csv results/ci_${{ matrix.os }}.csv
+      - name: Upload CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ matrix.os }}
+          path: results/ci_*.csv

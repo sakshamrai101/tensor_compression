@@ -91,20 +91,24 @@ These are settled for the builder. Do not reopen unless the human explicitly cha
 
 ---
 
-## 3. Current repo state (as of plan authoring)
+## 3. Current repo state (updated)
 
 ```
 tensor-compression/
-├── CMakeLists.txt          # empty
-├── README.md               # vision + aspirational metrics (replace when measured)
-├── include/tensor.h        # RawTensor / CompressedTensor / DataType (fix trailing ;)
-├── include/compressor.h    # TensorCompressor API + TODOs
-├── src/{compressor,tensor,main}.cpp  # empty
-├── benchmarks/             # empty dir
-└── tests/                  # empty dir
+├── CMakeLists.txt          # lib + CLI + tests + bench; NEON/AVX2 detect; optional lz4/zstd
+├── README.md               # honest status; measured numbers only from tc_bench CSVs
+├── include/                # tensor, format (TCF1 64B), compressor, synthetic, analyze, layer_pager
+├── src/codec/              # byte_shuffle, xor_delta, rle, block
+├── src/simd/               # NEON (+ AVX2 on x86)
+├── src/runtime/            # LayerPager demo
+├── tests/                  # in-repo harness + CTest groups
+├── benchmarks/             # tc_bench + baselines + huffman experiment
+├── docs/writeup.md
+├── tools/                  # weight export helpers
+└── results/                # measured CSVs from tc_bench
 ```
 
-Nothing builds yet. Treat README performance table as **targets/hypotheses**, not facts.
+Build with CMake ≥ 3.20 / C++20. README metrics must come from `results/*.csv`.
 
 ---
 
