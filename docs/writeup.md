@@ -101,21 +101,25 @@ Fill the tables below after running the harness:
 
 ### Main results
 
-From `results/arm64_874c29d_quick.csv` (Apple Silicon, AppleClang 17, Release, NEON, \(B_1 \approx 56\) GB/s):
+From `results/arm64_63a8ced_full.csv` (Apple Silicon, AppleClang 17, Release, NEON, \(B_1 \approx 66\) GB/s). Hot = 64 KiB; cold = 32 MiB.
 
-| dataset (64 KiB) | codec | ratio | enc GB/s | dec GB/s |
-|---------|-------|------:|---------:|---------:|
-| zeros | tc-full | 111.5 | 13.7 | 3.7 |
-| zeros | lz4 | 245.5 | 26.2 | 20.4 |
-| gaussian | tc-full | 0.999 | 4.1 | 71.5† |
-| gaussian | shuffle+lz4 | 1.063 | 1.7 | 3.0 |
-| ar1 ρ=0.99 | tc-full | 1.130 | 4.0 | 2.3 |
-| ar1 | shuffle+lz4 | 1.175 | 2.2 | 3.4 |
-| shared_exponent | tc-full | 1.317 | 11.1 | 3.8 |
+| dataset | codec | regime | ratio | enc GB/s | dec GB/s |
+|---------|-------|--------|------:|---------:|---------:|
+| zeros | tc-full | hot | 111.5 | 13.3 | 4.1 |
+| zeros | tc-full | cold | 125.0 | 14.9 | 4.0 |
+| gaussian | tc-full | cold | 1.000 | 1.9 | 72.1† |
+| gaussian | shuffle+lz4 | cold | 1.083 | 1.4 | 3.3 |
+| gaussian | zstd-1 | cold | 1.080 | 1.5 | 1.7 |
+| ar1 ρ=0.99 | tc-full | hot | 1.130 | 4.0 | 3.0 |
+| ar1 | tc-full | cold | 1.135 | 1.7 | 2.2 |
+| ar1 | shuffle+lz4 | cold | 1.196 | 1.9 | 3.0 |
+| shared_exponent | tc-full | hot | 1.317 | 10.0 | 3.7 |
 
 † Stored-raw fallback: decode is memcpy of uncompressed blocks.
 
-### Ablations (ratio on ar1_64k)
+Cold confirms hot: ratios hold; encode pays a cold-cache tax; encoded-path decode stays ~2–4 GB/s.
+
+### Ablations (ratio on ar1_hot)
 
 | tc-full | tc-shuffle | tc-sx | tc-xr | tc-rle |
 |--------:|-----------:|------:|------:|-------:|
@@ -127,26 +131,24 @@ Full pipeline needed for the 1.13× win; shuffle alone does not shrink (stored f
 
 | dataset | R | required GB/s | measured GB/s | verdict |
 |---------|--:|--------------:|--------------:|---------|
-| zeros tc-full | 111.5 | 56.3 | 3.7 | LOSS |
-| zeros tc-rle | 111.5 | 56.3 | 131 | WIN (RLE-only decode) |
-| ar1 tc-full | 1.13 | 486 | 2.3 | LOSS |
-| shared tc-full | 1.32 | 232 | 3.8 | LOSS |
+| zeros_hot tc-full | 111.5 | 66.5 | 4.1 | LOSS |
+| zeros_hot tc-rle | 111.5 | 66.5 | 143 | WIN (RLE-only decode) |
+| ar1_hot tc-full | 1.13 | 574 | 3.0 | LOSS |
+| ar1_cold tc-full | 1.14 | 554 | 2.2 | LOSS |
+| shared_hot tc-full | 1.32 | 273 | 3.7 | LOSS |
 
-Fused stream microbench (`tc_fused_stream` 4 MiB AR1, 4 threads): raw touch 90 GB/s; serial decompress+touch 1.7 GB/s; parallel aggregate 7.2 GB/s — still below \(B_1\) on this host.
+Fused stream microbench (`tc_fused_stream` 4 MiB AR1, 4 threads): raw touch ~90 GB/s; serial decompress+touch ~1.7 GB/s; parallel aggregate ~7 GB/s — still below \(B_1\) on this host.
 
 ### GPT-2 small (native FP32)
 
-Exported with `tools/export_safetensors.py --model gpt2 --max-tensors 12` (no BF16 upcast). Ratios from `results/gpt2_ratios.txt`:
+Exported with `tools/export_safetensors.py --model gpt2 --max-tensors 40` (layers 0–3 + embeddings; no BF16 upcast). Full table: `results/gpt2_ratios.txt`.
 
-| tensor | nbytes | ratio |
-|--------|-------:|------:|
-| wte.weight | 154,389,504 | 0.9998 |
-| wpe.weight | 3,145,728 | 0.9998 |
-| h.0.attn.c_attn.weight | 7,077,888 | 0.9998 |
-| h.0.mlp.c_fc.weight | 9,437,184 | 1.0001 |
-| h.0.ln_1.weight | 3,072 | 1.1058 |
+| class | n | min R | median R | max R |
+|-------|--:|------:|---------:|------:|
+| matrices (≥100 KB) | 14 | 0.9998 | 0.9998 | 1.0001 |
+| vectors (<100 KB) | 26 | 0.9759 | 0.9910 | 1.2637 |
 
-Large matrices sit at the stored-fallback floor. Entropy on a small bias vector (`tc analyze`): byte plane 3 (sign+exponent) ≈ 3.3 bits/byte vs ≈ 7.9 for mantissa planes; order-0 bound ≈ 1.19× while plane XOR+RLE ≈ 1.00× — RLE does not capture the remaining exponent redundancy (Huffman stretch reaches ~1.17× on gaussian synthetics).
+Every large weight matrix sits on the stored-fallback floor (~1.0×). Small LayerNorm weight vectors sometimes exceed 1.2× (structured scales), which does not move the model-size needle. Entropy on a bias vector (`tc analyze`): byte plane 3 ≈ 3.3 bits/byte vs ≈ 7.9 for mantissa planes; order-0 bound ≈ 1.19× while plane XOR+RLE ≈ 1.00× — RLE misses the remaining exponent redundancy (Huffman stretch ~1.17× on gaussian synthetics).
 
 ## 7. What didn’t work
 

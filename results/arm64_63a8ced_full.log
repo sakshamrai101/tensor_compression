@@ -1,0 +1,160 @@
+=== TC-Runtime bench ===
+host:       Apple Silicon
+os:         Darwin 25.6.0
+compiler:   AppleClang 17.0.0.17000319
+build:      Release ( -O3 -DNDEBUG)
+git:        63a8ced
+simd:       neon
+cores:      P=10 E=4 (hw_concurrency=14)
+ram:        24.0 GiB
+memcpy B1:  65.87 GB/s (single thread, 256 MiB)
+memcpy Ball:115.91 GB/s (all threads, 256 MiB)
+
+SIMD vs scalar decode on gaussian_hot: scalar=87.38 GB/s  simd(neon)=92.43 GB/s
+
+Huffman exponent experiment on gaussian_hot: ratio=1.165x (toy frame, not TCF1)
+
+dataset          codec            regime    ratio   enc GB/s   dec GB/s    dec p90
+zeros_hot        tc-full          hot     111.456      13.33       4.12       3.97
+zeros_hot        tc-shuffle       hot       0.999      35.75      92.43      74.90
+zeros_hot        tc-sx            hot       0.999      28.61      98.25      78.67
+zeros_hot        tc-xr            hot     111.456      22.15       4.36       4.35
+zeros_hot        tc-rle           hot     111.456      32.77     142.78     131.07
+zeros_hot        memcpy           hot       1.000      98.25      87.38      62.95
+zeros_hot        zlib-1           hot     213.472       1.95       9.83       9.71
+zeros_hot        zlib-6           hot     780.190       0.76       4.29       3.99
+zeros_hot        lz4              hot     245.453      20.16      18.08      12.79
+zeros_hot        shuffle+lz4      hot     245.453       3.73       3.04       2.97
+zeros_hot        zstd-1           hot    3276.800      21.85       4.23       4.22
+zeros_hot        zstd-3           hot    3276.800      15.42       4.23       4.19
+gaussian_hot     tc-full          hot       0.999       4.13      68.41      41.40
+gaussian_hot     tc-shuffle       hot       0.999      30.84      98.25      82.75
+gaussian_hot     tc-sx            hot       0.999      29.13      98.25      78.67
+gaussian_hot     tc-xr            hot       0.999       9.71      98.25      87.38
+gaussian_hot     tc-rle           hot       0.999      13.56     104.86      87.38
+gaussian_hot     memcpy           hot       1.000     112.22     104.86      78.67
+gaussian_hot     zlib-1           hot       1.075       0.08       0.61       0.53
+gaussian_hot     zlib-6           hot       1.078       0.06       0.63       0.50
+gaussian_hot     lz4              hot       0.996      23.83      87.38      74.90
+gaussian_hot     shuffle+lz4      hot       1.063       1.71       3.00       2.99
+gaussian_hot     zstd-1           hot       1.080       1.53       1.71       1.69
+gaussian_hot     zstd-3           hot       1.080       1.36       1.70       1.70
+ar1_hot          tc-full          hot       1.130       3.99       2.99       2.97
+ar1_hot          tc-shuffle       hot       0.999      35.75      98.25      87.38
+ar1_hot          tc-sx            hot       0.999      29.13      92.43      82.75
+ar1_hot          tc-xr            hot       0.999       9.42      87.38      68.41
+ar1_hot          tc-rle           hot       0.999      13.56      98.25      87.38
+ar1_hot          memcpy           hot       1.000     104.86     104.86      92.43
+ar1_hot          zlib-1           hot       1.074       0.08       0.62       0.61
+ar1_hot          zlib-6           hot       1.077       0.06       0.63       0.55
+ar1_hot          lz4              hot       0.996      22.47      74.90      68.34
+ar1_hot          shuffle+lz4      hot       1.175       2.19       3.39       3.38
+ar1_hot          zstd-1           hot       1.078       1.16       1.71       1.41
+ar1_hot          zstd-3           hot       1.078       1.11       1.71       1.70
+random_hot       tc-full          hot       0.999       8.64      82.75      60.51
+random_hot       tc-shuffle       hot       0.999      25.37      98.25      92.43
+random_hot       tc-sx            hot       0.999      26.66      82.75      62.89
+random_hot       tc-xr            hot       0.999       9.53      92.56      87.38
+random_hot       tc-rle           hot       0.999      12.68      98.25      87.38
+random_hot       memcpy           hot       1.000     112.41     112.22     104.86
+random_hot       zlib-1           hot       1.000       0.14      18.29      17.67
+random_hot       zlib-6           hot       1.000       0.12      18.50      18.08
+random_hot       lz4              hot       0.996      23.83      87.38      82.75
+random_hot       shuffle+lz4      hot       0.996       3.72       4.03       4.00
+random_hot       zstd-1           hot       1.000       9.59      62.89      52.43
+random_hot       zstd-3           hot       1.000       7.25      62.95      52.43
+shared_hot       tc-full          hot       1.317      10.02       3.73       3.51
+shared_hot       tc-shuffle       hot       0.999      35.75     104.86      92.56
+shared_hot       tc-sx            hot       0.999      28.59     104.86      87.38
+shared_hot       tc-xr            hot       0.999       8.99      98.40      87.38
+shared_hot       tc-rle           hot       0.999      14.43      98.40      87.38
+shared_hot       memcpy           hot       1.000     112.22     104.86      62.95
+shared_hot       zlib-1           hot       1.167       0.09       0.65       0.58
+shared_hot       zlib-6           hot       1.181       0.05       0.63       0.63
+shared_hot       lz4              hot       0.996      29.68      78.67      60.46
+shared_hot       shuffle+lz4      hot       1.325       3.50       3.71       3.67
+shared_hot       zstd-1           hot       1.187       1.63       1.95       1.61
+shared_hot       zstd-3           hot       1.187       1.54       1.95       1.94
+zeros_cold       tc-full          cold    125.039      14.94       4.03       4.02
+zeros_cold       memcpy           cold      1.000      65.24      73.45      66.86
+zeros_cold       zlib-1           cold    229.150       1.40      14.20      13.77
+zeros_cold       lz4              cold    254.981      30.94      33.39      21.51
+zeros_cold       shuffle+lz4      cold    254.981       3.80       3.81       3.59
+zeros_cold       zstd-1           cold   32171.076      12.90     221.24     207.71
+zeros_cold       zstd-3           cold   32171.076       8.93     216.54     209.17
+gaussian_cold    tc-full          cold      1.000       1.92      72.08      68.75
+gaussian_cold    memcpy           cold      1.000      65.14      73.10      68.25
+gaussian_cold    zlib-1           cold      1.075       0.05       0.60       0.60
+gaussian_cold    lz4              cold      0.996      47.38      67.53      63.00
+gaussian_cold    shuffle+lz4      cold      1.083       1.38       3.27       3.14
+gaussian_cold    zstd-1           cold      1.080       1.47       1.69       1.68
+gaussian_cold    zstd-3           cold      1.079       0.99       1.46       1.45
+ar1_cold         tc-full          cold      1.135       1.75       2.23       2.09
+ar1_cold         memcpy           cold      1.000      60.85      70.10      68.03
+ar1_cold         zlib-1           cold      1.076       0.05       0.60       0.59
+ar1_cold         lz4              cold      0.996      46.66      64.50      59.61
+ar1_cold         shuffle+lz4      cold      1.196       1.91       3.02       2.98
+ar1_cold         zstd-1           cold      1.080       1.06       1.65       1.63
+ar1_cold         zstd-3           cold      1.081       0.78       1.41       1.40
+random_cold      tc-full          cold      1.000       5.61      73.32      71.28
+random_cold      memcpy           cold      1.000      64.32      73.96      71.72
+random_cold      zlib-1           cold      1.000       0.08      17.57      16.82
+random_cold      lz4              cold      0.996      46.15      66.31      61.89
+random_cold      shuffle+lz4      cold      0.996       3.74       3.95       3.78
+random_cold      zstd-1           cold      1.000      10.23      70.55      67.30
+random_cold      zstd-3           cold      1.000      11.08      70.71      67.32
+int8_hot         tc-full          hot       0.999       7.35      87.38      65.54
+int8_hot         tc-shuffle       hot       0.999      62.89      92.43      74.90
+int8_hot         tc-sx            hot       0.999      29.68      87.38      74.90
+int8_hot         tc-xr            hot       0.999       9.25      87.38      78.67
+int8_hot         tc-rle           hot       0.999      10.35      87.38      68.41
+int8_hot         memcpy           hot       1.000      78.67      98.25      78.67
+int8_hot         zlib-1           hot       1.119       0.09       0.62       0.58
+int8_hot         zlib-6           hot       1.123       0.08       0.61       0.55
+int8_hot         lz4              hot       0.996      20.70      78.58      56.16
+int8_hot         shuffle+lz4      hot       0.996       3.70       4.01       3.99
+int8_hot         zstd-1           hot       1.124       1.68       1.71       1.70
+int8_hot         zstd-3           hot       1.124       1.51       1.71       1.38
+gaussian_hot     tc-full-scalar   hot       0.999       2.22      87.38      60.46
+gaussian_hot     tc-full-simd     hot       0.999       4.44      92.43      68.41
+
+Break-even (serial model): required decode GB/s = B1 * R / (R - 1)
+dataset          codec                   R     required     measured verdict
+zeros_hot        tc-full           111.456        66.47         4.12 LOSS
+zeros_hot        tc-shuffle          0.999            -        92.43 never (R~1)
+zeros_hot        tc-sx               0.999            -        98.25 never (R~1)
+zeros_hot        tc-xr             111.456        66.47         4.36 LOSS
+zeros_hot        tc-rle            111.456        66.47       142.78 WIN
+gaussian_hot     tc-full             0.999            -        68.41 never (R~1)
+gaussian_hot     tc-shuffle          0.999            -        98.25 never (R~1)
+gaussian_hot     tc-sx               0.999            -        98.25 never (R~1)
+gaussian_hot     tc-xr               0.999            -        98.25 never (R~1)
+gaussian_hot     tc-rle              0.999            -       104.86 never (R~1)
+ar1_hot          tc-full             1.130       573.62         2.99 LOSS
+ar1_hot          tc-shuffle          0.999            -        98.25 never (R~1)
+ar1_hot          tc-sx               0.999            -        92.43 never (R~1)
+ar1_hot          tc-xr               0.999            -        87.38 never (R~1)
+ar1_hot          tc-rle              0.999            -        98.25 never (R~1)
+random_hot       tc-full             0.999            -        82.75 never (R~1)
+random_hot       tc-shuffle          0.999            -        98.25 never (R~1)
+random_hot       tc-sx               0.999            -        82.75 never (R~1)
+random_hot       tc-xr               0.999            -        92.56 never (R~1)
+random_hot       tc-rle              0.999            -        98.25 never (R~1)
+shared_hot       tc-full             1.317       273.35         3.73 LOSS
+shared_hot       tc-shuffle          0.999            -       104.86 never (R~1)
+shared_hot       tc-sx               0.999            -       104.86 never (R~1)
+shared_hot       tc-xr               0.999            -        98.40 never (R~1)
+shared_hot       tc-rle              0.999            -        98.40 never (R~1)
+zeros_cold       tc-full           125.039        66.40         4.03 LOSS
+gaussian_cold    tc-full             1.000            -        72.08 never (R~1)
+ar1_cold         tc-full             1.135       553.54         2.23 LOSS
+random_cold      tc-full             1.000            -        73.32 never (R~1)
+int8_hot         tc-full             0.999            -        87.38 never (R~1)
+int8_hot         tc-shuffle          0.999            -        92.43 never (R~1)
+int8_hot         tc-sx               0.999            -        87.38 never (R~1)
+int8_hot         tc-xr               0.999            -        87.38 never (R~1)
+int8_hot         tc-rle              0.999            -        87.38 never (R~1)
+gaussian_hot     tc-full-scalar      0.999            -        87.38 never (R~1)
+gaussian_hot     tc-full-simd        0.999            -        92.43 never (R~1)
+
+wrote results/arm64_63a8ced_full.csv
