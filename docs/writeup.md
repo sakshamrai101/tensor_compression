@@ -101,21 +101,25 @@ Fill the tables below after running the harness:
 
 ### Main results
 
-From `results/arm64_874c29d_quick.csv` (Apple Silicon, AppleClang 17, Release, NEON, \(B_1 \approx 56\) GB/s):
+From `results/arm64_63a8ced_full.csv` (Apple Silicon, AppleClang 17, Release, NEON, \(B_1 \approx 66\) GB/s). Hot = 64 KiB; cold = 32 MiB.
 
-| dataset (64 KiB) | codec | ratio | enc GB/s | dec GB/s |
-|---------|-------|------:|---------:|---------:|
-| zeros | tc-full | 111.5 | 13.7 | 3.7 |
-| zeros | lz4 | 245.5 | 26.2 | 20.4 |
-| gaussian | tc-full | 0.999 | 4.1 | 71.5† |
-| gaussian | shuffle+lz4 | 1.063 | 1.7 | 3.0 |
-| ar1 ρ=0.99 | tc-full | 1.130 | 4.0 | 2.3 |
-| ar1 | shuffle+lz4 | 1.175 | 2.2 | 3.4 |
-| shared_exponent | tc-full | 1.317 | 11.1 | 3.8 |
+| dataset | codec | regime | ratio | enc GB/s | dec GB/s |
+|---------|-------|--------|------:|---------:|---------:|
+| zeros | tc-full | hot | 111.5 | 13.3 | 4.1 |
+| zeros | tc-full | cold | 125.0 | 14.9 | 4.0 |
+| gaussian | tc-full | cold | 1.000 | 1.9 | 72.1† |
+| gaussian | shuffle+lz4 | cold | 1.083 | 1.4 | 3.3 |
+| gaussian | zstd-1 | cold | 1.080 | 1.5 | 1.7 |
+| ar1 ρ=0.99 | tc-full | hot | 1.130 | 4.0 | 3.0 |
+| ar1 | tc-full | cold | 1.135 | 1.7 | 2.2 |
+| ar1 | shuffle+lz4 | cold | 1.196 | 1.9 | 3.0 |
+| shared_exponent | tc-full | hot | 1.317 | 10.0 | 3.7 |
 
 † Stored-raw fallback: decode is memcpy of uncompressed blocks.
 
-### Ablations (ratio on ar1_64k)
+Cold confirms hot: ratios hold; encode pays a cold-cache tax; encoded-path decode stays ~2–4 GB/s.
+
+### Ablations (ratio on ar1_hot)
 
 | tc-full | tc-shuffle | tc-sx | tc-xr | tc-rle |
 |--------:|-----------:|------:|------:|-------:|
@@ -127,12 +131,13 @@ Full pipeline needed for the 1.13× win; shuffle alone does not shrink (stored f
 
 | dataset | R | required GB/s | measured GB/s | verdict |
 |---------|--:|--------------:|--------------:|---------|
-| zeros tc-full | 111.5 | 56.3 | 3.7 | LOSS |
-| zeros tc-rle | 111.5 | 56.3 | 131 | WIN (RLE-only decode) |
-| ar1 tc-full | 1.13 | 486 | 2.3 | LOSS |
-| shared tc-full | 1.32 | 232 | 3.8 | LOSS |
+| zeros_hot tc-full | 111.5 | 66.5 | 4.1 | LOSS |
+| zeros_hot tc-rle | 111.5 | 66.5 | 143 | WIN (RLE-only decode) |
+| ar1_hot tc-full | 1.13 | 574 | 3.0 | LOSS |
+| ar1_cold tc-full | 1.14 | 554 | 2.2 | LOSS |
+| shared_hot tc-full | 1.32 | 273 | 3.7 | LOSS |
 
-Fused stream microbench (`tc_fused_stream` 4 MiB AR1, 4 threads): raw touch 90 GB/s; serial decompress+touch 1.7 GB/s; parallel aggregate 7.2 GB/s — still below \(B_1\) on this host.
+Fused stream microbench (`tc_fused_stream` 4 MiB AR1, 4 threads): raw touch ~90 GB/s; serial decompress+touch ~1.7 GB/s; parallel aggregate ~7 GB/s — still below \(B_1\) on this host.
 
 ### GPT-2 small (native FP32)
 

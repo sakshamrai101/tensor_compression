@@ -59,30 +59,32 @@ Distributions: `zeros`, `random_bits`, `gaussian`, `ar1_gaussian`, `shared_expon
 
 ## Results (measured)
 
-Source: [`results/arm64_874c29d_quick.csv`](results/arm64_874c29d_quick.csv) from
+Primary source: [`results/arm64_63a8ced_full.csv`](results/arm64_63a8ced_full.csv) (`./build/tc_bench --csv …`). Quick smoke: [`results/arm64_874c29d_quick.csv`](results/arm64_874c29d_quick.csv).
 
-```bash
-./build/tc_bench --quick --csv results/arm64_<sha>_quick.csv
-```
+Host: Apple Silicon, AppleClang 17, Release `-O3`, SIMD=`neon`, single-thread memcpy \(B_1\) ≈ **66 GB/s**.
 
-Host (that run): Apple Silicon, Darwin 25.6, AppleClang 17, Release `-O3`, SIMD=`neon`, single-thread memcpy ≈ **56–63 GB/s** (varies by thermal/load).
+### Hot (64 KiB) vs cold (32 MiB)
 
-| dataset (64 KiB hot) | codec | ratio | enc GB/s | dec GB/s |
-| :--- | :--- | ---: | ---: | ---: |
-| zeros | tc-full | 111.5 | 13.7 | 3.7 |
-| zeros | lz4 | 245.5 | 26.2 | 20.4 |
-| zeros | shuffle+lz4 | 245.5 | 3.4 | 3.2 |
-| gaussian σ=0.02 | tc-full | 0.999 | 4.1 | 71.5† |
-| gaussian | shuffle+lz4 | 1.063 | 1.7 | 3.0 |
-| gaussian | zstd-1 | 1.080 | 1.5 | 1.7 |
-| ar1 ρ=0.99 | tc-full | 1.130 | 4.0 | 2.3 |
-| ar1 | shuffle+lz4 | 1.175 | 2.2 | 3.4 |
-| shared_exponent | tc-full | 1.317 | 11.1 | 3.8 |
-| random_bits | tc-full | 0.999 | 8.6 | 71.6† |
+| dataset | codec | regime | ratio | enc GB/s | dec GB/s |
+| :--- | :--- | :--- | ---: | ---: | ---: |
+| zeros | tc-full | hot | 111.5 | 13.3 | 4.1 |
+| zeros | tc-full | cold | 125.0 | 14.9 | 4.0 |
+| zeros | shuffle+lz4 | cold | 255.0 | 3.8 | 3.8 |
+| gaussian σ=0.02 | tc-full | hot | 0.999 | 4.1 | 68.4† |
+| gaussian | tc-full | cold | 1.000 | 1.9 | 72.1† |
+| gaussian | shuffle+lz4 | cold | 1.083 | 1.4 | 3.3 |
+| gaussian | zstd-1 | cold | 1.080 | 1.5 | 1.7 |
+| ar1 ρ=0.99 | tc-full | hot | 1.130 | 4.0 | 3.0 |
+| ar1 | tc-full | cold | 1.135 | 1.7 | 2.2 |
+| ar1 | shuffle+lz4 | cold | 1.196 | 1.9 | 3.0 |
+| shared_exponent | tc-full | hot | 1.317 | 10.0 | 3.7 |
+| random_bits | tc-full | cold | 1.000 | 5.6 | 73.3† |
 
-† Decode ≈ memcpy because the **stored-raw fallback** kept every block uncompressed (ratio ≈ 1). That is correct behavior, not a speed claim for the RLE path.
+† Decode ≈ memcpy: **stored-raw fallback** kept blocks uncompressed (ratio ≈ 1). Not an RLE-path speed claim.
 
-**Break-even (serial model \(T > B_1 R/(R-1)\)):** on this host, `tc-full` loses for ar1/shared (required hundreds of GB/s; measured ~2–4 GB/s on the encoded path). High DRAM bandwidth makes modest lossless ratios hard to amortize — documented in [`docs/writeup.md`](docs/writeup.md). Re-run `tc_bench` after code changes; replace this table from the new CSV.
+**Cold vs hot:** ratios are stable; encode slows on cold working sets; decode on the encoded path stays ~2–4 GB/s. `shuffle+lz4` still wins ratio on ar1/gaussian; TC wins only when the stream is highly zero/run structured.
+
+**Break-even (serial \(T > B_1 R/(R-1)\)):** `tc-full` is LOSS on ar1/shared/zeros-encoded on this host (required ≫ measured decode). Documented in [`docs/writeup.md`](docs/writeup.md).
 
 ---
 
