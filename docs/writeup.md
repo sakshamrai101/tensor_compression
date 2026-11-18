@@ -141,17 +141,14 @@ Fused stream microbench (`tc_fused_stream` 4 MiB AR1, 4 threads): raw touch ~90 
 
 ### GPT-2 small (native FP32)
 
-Exported with `tools/export_safetensors.py --model gpt2 --max-tensors 12` (no BF16 upcast). Ratios from `results/gpt2_ratios.txt`:
+Exported with `tools/export_safetensors.py --model gpt2 --max-tensors 40` (layers 0–3 + embeddings; no BF16 upcast). Full table: `results/gpt2_ratios.txt`.
 
-| tensor | nbytes | ratio |
-|--------|-------:|------:|
-| wte.weight | 154,389,504 | 0.9998 |
-| wpe.weight | 3,145,728 | 0.9998 |
-| h.0.attn.c_attn.weight | 7,077,888 | 0.9998 |
-| h.0.mlp.c_fc.weight | 9,437,184 | 1.0001 |
-| h.0.ln_1.weight | 3,072 | 1.1058 |
+| class | n | min R | median R | max R |
+|-------|--:|------:|---------:|------:|
+| matrices (≥100 KB) | 14 | 0.9998 | 0.9998 | 1.0001 |
+| vectors (<100 KB) | 26 | 0.9759 | 0.9910 | 1.2637 |
 
-Large matrices sit at the stored-fallback floor. Entropy on a small bias vector (`tc analyze`): byte plane 3 (sign+exponent) ≈ 3.3 bits/byte vs ≈ 7.9 for mantissa planes; order-0 bound ≈ 1.19× while plane XOR+RLE ≈ 1.00× — RLE does not capture the remaining exponent redundancy (Huffman stretch reaches ~1.17× on gaussian synthetics).
+Every large weight matrix sits on the stored-fallback floor (~1.0×). Small LayerNorm weight vectors sometimes exceed 1.2× (structured scales), which does not move the model-size needle. Entropy on a bias vector (`tc analyze`): byte plane 3 ≈ 3.3 bits/byte vs ≈ 7.9 for mantissa planes; order-0 bound ≈ 1.19× while plane XOR+RLE ≈ 1.00× — RLE misses the remaining exponent redundancy (Huffman stretch ~1.17× on gaussian synthetics).
 
 ## 7. What didn’t work
 
