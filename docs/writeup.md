@@ -158,12 +158,9 @@ Every large weight matrix sits on the stored-fallback floor (~1.0×). Small Laye
 4. **ASan on this macOS** deadlocks in `AsanInitInternal` during dyld init. CI / local sanitize uses UBSan on Apple; ASan remains enabled on Linux.
 5. **BF16-upcast trap:** casting BF16 checkpoints to FP32 creates 16 zero low bits and inflates ratio. Export tools should prefer natively FP32 checkpoints (GPT-2 small) or report upcast separately.
 
-## 8. Next steps
+## 8. Scope boundary (v1.0)
 
-- Restartable XOR sub-blocks for parallel decode.
-- Stronger exponent entropy coding in-format (v2), still lossless w.r.t. FP32 bits.
-- Optional plugin shim for a real runtime (out of portfolio scope unless explicitly requested).
-- Broader real-weight corpus (not only GPT-2).
+This repository stops at a **measured lossless codec + evaluation**. It deliberately does not integrate into llama.cpp/ONNX, add CUDA/Metal kernels, or claim to beat ZipNN/DFloat11 on ratio. The failure analysis above is the intended conclusion for MS CS readers: where the approach helps, where DRAM break-even fails on a high-bandwidth laptop, and what entropy analysis says the next stronger lossless idea would have to target (exponent coding) — without shipping that as unfinished product surface.
 
 ## References (engineering)
 

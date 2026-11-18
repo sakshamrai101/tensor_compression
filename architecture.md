@@ -45,7 +45,7 @@ flowchart TB
 - Let weight tensor \(W\) have byte size \(N = \mathrm{numel}(W) \cdot \mathrm{sizeof(dtype)}\).
 - Uncompressed traffic to load \(W\) once ≈ \(N\) bytes from DRAM.
 - Compressed size \(C = |payload| + |header|\).
-- **Compression ratio** \(R = N / C\) (report as e.g. `1.78x`; store as `compression_ratio_x100 = round(R * 100)`).
+- **Compression ratio** \(R = N / C\) (report as e.g. `1.13x`; store as `compression_ratio_x100 = round(R * 100)`).
 - **Decode throughput** \(T_{dec} = N / t_{decode}\) (bytes of uncompressed output per second).
 
 ### 2.2 When this helps
